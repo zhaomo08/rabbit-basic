@@ -1,0 +1,9 @@
+### Send POST request with json body
+POST 127.0.0.1:9090/api/v1/orders
+Content-Type: application/json
+
+{
+  "accountId": 12145,
+  "address": "陕棉八厂",
+  "productId": 2
+}
