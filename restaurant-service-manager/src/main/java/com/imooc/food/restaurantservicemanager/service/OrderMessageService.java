@@ -28,11 +28,13 @@ public class OrderMessageService {
     ProductDao productDao;
     @Autowired
     RestaurantDao restaurantDao;
+
+    @Autowired
+    Channel channel;
+
     DeliverCallback deliverCallback = (consumerTag, message) -> {
         String messageBody = new String(message.getBody());
         log.info("deliverCallback:messageBody:{}", messageBody);
-        ConnectionFactory connectionFactory = new ConnectionFactory();
-        connectionFactory.setHost("localhost");
         try {
             OrderMessageDTO orderMessageDTO = objectMapper.readValue(messageBody,
                     OrderMessageDTO.class);
@@ -49,36 +51,42 @@ public class OrderMessageService {
             }
             log.info("sendMessage:restaurantOrderMessageDTO:{}", orderMessageDTO);
 
-            try (Connection connection = connectionFactory.newConnection();
-                 Channel channel = connection.createChannel()) {
-                channel.addReturnListener(new ReturnListener() {
-                    @Override
-                    public void handleReturn(int replyCode, String replyText, String exchange, String routingKey, AMQP.BasicProperties properties, byte[] body) throws IOException {
-                        // 也可以在此做业务操作
-                        log.info("Message Return: replyCode:{}, replyText:{}," +
-                                        " exchange:{}, routingKey:{}, " +
-                                        "properties:{}, " + "body:{}",
-                                replyCode, replyText, exchange, routingKey, properties, body);
-
-                    }
-                });
-                channel.addReturnListener(new ReturnCallback() {
-                    @Override
-                    public void handle(Return returnMessage) {
-                        log.info("Message Return: returnMessage:{}", returnMessage);
-                    }
-                });
-
-                String messageToSend = objectMapper.writeValueAsString(orderMessageDTO);
-                channel.basicPublish("exchange.order.restaurant",
-                        "key.order",
-                        true,
-                        null,
-                        messageToSend.getBytes());
-
-                Thread.sleep(1000);  // channel 不会被关闭  可以添加的 listener 代码可以执行
+//            try (Connection connection = connectionFactory.newConnection();
+//                 Channel channel = connection.createChannel()) {
+//                channel.addReturnListener(new ReturnListener() {
+//                    @Override
+//                    public void handleReturn(int replyCode, String replyText, String exchange, String routingKey, AMQP.BasicProperties properties, byte[] body) throws IOException {
+//                        // 也可以在此做业务操作
+//                        log.info("Message Return: replyCode:{}, replyText:{}," +
+//                                        " exchange:{}, routingKey:{}, " +
+//                                        "properties:{}, " + "body:{}",
+//                                replyCode, replyText, exchange, routingKey, properties, body);
+//
+//                    }
+//                });
+            channel.addReturnListener(new ReturnCallback() {
+                @Override
+                public void handle(Return returnMessage) {
+                    log.info("Message Return: returnMessage:{}", returnMessage);
+                }
+            });
+            if (message.getEnvelope().getDeliveryTag() % 2 == 0) {
+                channel.basicAck(message.getEnvelope().getDeliveryTag(), true);
             }
-        } catch (JsonProcessingException | TimeoutException | InterruptedException e) {
+
+//            channel.basicAck(message.getEnvelope().getDeliveryTag(), true);  //  没有手动 ack  在管控台  queue Unacked 在微服务关闭后 改为 ready 状态
+
+//                channel.basicNack(message.getEnvelope().getDeliveryTag(), false,true);  // 手动拒收 重回队列
+            String messageToSend = objectMapper.writeValueAsString(orderMessageDTO);
+            channel.basicPublish("exchange.order.restaurant",
+                    "key.order",
+                    true,
+                    null,
+                    messageToSend.getBytes());
+
+            Thread.sleep(1000);  // channel 不会被关闭  可以添加的 listener 代码可以执行
+//            }
+        } catch (JsonProcessingException | InterruptedException e) {
             e.printStackTrace();
         }
     };
@@ -86,37 +94,32 @@ public class OrderMessageService {
     @Async
     public void handleMessage() throws IOException, TimeoutException, InterruptedException {
         log.info("start linstening message");
-        ConnectionFactory connectionFactory = new ConnectionFactory();
-//        connectionFactory.setHost("localhost");
-        connectionFactory.setHost("localhost");
-        try (Connection connection = connectionFactory.newConnection();
-             Channel channel = connection.createChannel()) {
-
-            channel.exchangeDeclare(
-                    "exchange.order.restaurant",
-                    BuiltinExchangeType.DIRECT,
-                    true,
-                    false,
-                    null);
-
-            channel.queueDeclare(
-                    "queue.restaurant",
-                    true,
-                    false,
-                    false,
-                    null);
-
-            channel.queueBind(
-                    "queue.restaurant",
-                    "exchange.order.restaurant",
-                    "key.restaurant");
 
 
-            channel.basicConsume("queue.restaurant", true, deliverCallback, consumerTag -> {
-            });
-            while (true) {
-                Thread.sleep(100000);
-            }
+        channel.exchangeDeclare(
+                "exchange.order.restaurant",
+                BuiltinExchangeType.DIRECT,
+                true,
+                false,
+                null);
+
+        channel.queueDeclare(
+                "queue.restaurant",
+                true,
+                false,
+                false,
+                null);
+
+        channel.queueBind(
+                "queue.restaurant",
+                "exchange.order.restaurant",
+                "key.restaurant");
+
+
+        channel.basicConsume("queue.restaurant", false, deliverCallback, consumerTag -> {
+        });
+        while (true) {
+            Thread.sleep(6000);
         }
     }
 }
