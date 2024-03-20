@@ -9,11 +9,7 @@ import com.imooc.food.restaurantservicemanager.enummeration.ProductStatus;
 import com.imooc.food.restaurantservicemanager.enummeration.RestaurantStatus;
 import com.imooc.food.restaurantservicemanager.po.ProductPO;
 import com.imooc.food.restaurantservicemanager.po.RestaurantPO;
-import com.rabbitmq.client.BuiltinExchangeType;
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.ConnectionFactory;
-import com.rabbitmq.client.DeliverCallback;
+import com.rabbitmq.client.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
@@ -32,6 +28,60 @@ public class OrderMessageService {
     ProductDao productDao;
     @Autowired
     RestaurantDao restaurantDao;
+    DeliverCallback deliverCallback = (consumerTag, message) -> {
+        String messageBody = new String(message.getBody());
+        log.info("deliverCallback:messageBody:{}", messageBody);
+        ConnectionFactory connectionFactory = new ConnectionFactory();
+        connectionFactory.setHost("localhost");
+        try {
+            OrderMessageDTO orderMessageDTO = objectMapper.readValue(messageBody,
+                    OrderMessageDTO.class);
+
+            ProductPO productPO = productDao.selsctProduct(orderMessageDTO.getProductId());
+            log.info("onMessage:productPO:{}", productPO);
+            RestaurantPO restaurantPO = restaurantDao.selsctRestaurant(productPO.getRestaurantId());
+            log.info("onMessage:restaurantPO:{}", restaurantPO);
+            if (ProductStatus.AVALIABLE == productPO.getStatus() && RestaurantStatus.OPEN == restaurantPO.getStatus()) {
+                orderMessageDTO.setConfirmed(true);
+                orderMessageDTO.setPrice(productPO.getPrice());
+            } else {
+                orderMessageDTO.setConfirmed(false);
+            }
+            log.info("sendMessage:restaurantOrderMessageDTO:{}", orderMessageDTO);
+
+            try (Connection connection = connectionFactory.newConnection();
+                 Channel channel = connection.createChannel()) {
+                channel.addReturnListener(new ReturnListener() {
+                    @Override
+                    public void handleReturn(int replyCode, String replyText, String exchange, String routingKey, AMQP.BasicProperties properties, byte[] body) throws IOException {
+                        // 也可以在此做业务操作
+                        log.info("Message Return: replyCode:{}, replyText:{}," +
+                                        " exchange:{}, routingKey:{}, " +
+                                        "properties:{}, " + "body:{}",
+                                replyCode, replyText, exchange, routingKey, properties, body);
+
+                    }
+                });
+                channel.addReturnListener(new ReturnCallback() {
+                    @Override
+                    public void handle(Return returnMessage) {
+                        log.info("Message Return: returnMessage:{}", returnMessage);
+                    }
+                });
+
+                String messageToSend = objectMapper.writeValueAsString(orderMessageDTO);
+                channel.basicPublish("exchange.order.restaurant",
+                        "key.order",
+                        true,
+                        null,
+                        messageToSend.getBytes());
+
+                Thread.sleep(1000);  // channel 不会被关闭  可以添加的 listener 代码可以执行
+            }
+        } catch (JsonProcessingException | TimeoutException | InterruptedException e) {
+            e.printStackTrace();
+        }
+    };
 
     @Async
     public void handleMessage() throws IOException, TimeoutException, InterruptedException {
@@ -69,39 +119,5 @@ public class OrderMessageService {
             }
         }
     }
-
-
-    DeliverCallback deliverCallback = (consumerTag, message) -> {
-        String messageBody = new String(message.getBody());
-        log.info("deliverCallback:messageBody:{}", messageBody);
-        ConnectionFactory connectionFactory = new ConnectionFactory();
-        connectionFactory.setHost("localhost");
-        try {
-            OrderMessageDTO orderMessageDTO = objectMapper.readValue(messageBody,
-                    OrderMessageDTO.class);
-
-            ProductPO productPO = productDao.selsctProduct(orderMessageDTO.getProductId());
-            log.info("onMessage:productPO:{}", productPO);
-            RestaurantPO restaurantPO = restaurantDao.selsctRestaurant(productPO.getRestaurantId());
-            log.info("onMessage:restaurantPO:{}", restaurantPO);
-            if (ProductStatus.AVALIABLE == productPO.getStatus() && RestaurantStatus.OPEN == restaurantPO.getStatus()) {
-                orderMessageDTO.setConfirmed(true);
-                orderMessageDTO.setPrice(productPO.getPrice());
-            } else {
-                orderMessageDTO.setConfirmed(false);
-            }
-            log.info("sendMessage:restaurantOrderMessageDTO:{}", orderMessageDTO);
-
-            try (Connection connection = connectionFactory.newConnection();
-                 Channel channel = connection.createChannel()) {
-                String messageToSend = objectMapper.writeValueAsString(orderMessageDTO);
-                channel.basicPublish("exchange.order.restaurant", "key.order", null, messageToSend.getBytes());
-
-
-            }
-        } catch (JsonProcessingException | TimeoutException e) {
-            e.printStackTrace();
-        }
-    };
 }
 
