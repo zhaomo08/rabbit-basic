@@ -70,9 +70,11 @@ public class OrderMessageService {
                     log.info("Message Return: returnMessage:{}", returnMessage);
                 }
             });
-            if (message.getEnvelope().getDeliveryTag() % 2 == 0) {
-                channel.basicAck(message.getEnvelope().getDeliveryTag(), true);
-            }
+//            if (message.getEnvelope().getDeliveryTag() % 2 == 0) {
+//                channel.basicAck(message.getEnvelope().getDeliveryTag(), true);
+//            }
+            Thread.sleep(3000);
+            channel.basicAck(message.getEnvelope().getDeliveryTag(), false);
 
 //            channel.basicAck(message.getEnvelope().getDeliveryTag(), true);  //  没有手动 ack  在管控台  queue Unacked 在微服务关闭后 改为 ready 状态
 
@@ -115,6 +117,7 @@ public class OrderMessageService {
                 "exchange.order.restaurant",
                 "key.restaurant");
 
+        channel.basicQos(2);
 
         channel.basicConsume("queue.restaurant", false, deliverCallback, consumerTag -> {
         });

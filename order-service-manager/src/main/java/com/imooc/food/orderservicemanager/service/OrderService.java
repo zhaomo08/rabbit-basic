@@ -71,19 +71,19 @@ public class OrderService {
 
                 }
             });
-            channel.basicPublish("exchange.order.restaurant", "key.restaurant", null, messageToSend.getBytes());
+//            channel.basicPublish("exchange.order.restaurant", "key.restaurant", null, messageToSend.getBytes());
 
-//            for (int i = 0; i < 10; i++) {
-//                channel.basicPublish("exchange.order.restaurant", "key.restaurant", null, messageToSend.getBytes());
-//                log.info("message sent  successfully");
-//            }
+            for (int i = 0; i < 50; i++) {
+                channel.basicPublish("exchange.order.restaurant", "key.restaurant", null, messageToSend.getBytes());
+                log.info("message sent  successfully");
+            }
             log.info("message sent successfully");
 //            if (channel.waitForConfirms()) {
 //                log.info("RabbitMQ confirm successfully");
 //            } else {
 //                log.info("RabbitMQ confirm fail");
 //            }
-            Thread.sleep(100000);
+            Thread.sleep(1000);
 
         }
     }
