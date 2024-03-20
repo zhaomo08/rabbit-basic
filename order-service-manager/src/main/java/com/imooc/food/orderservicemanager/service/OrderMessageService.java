@@ -6,11 +6,7 @@ import com.imooc.food.orderservicemanager.dao.OrderDetailDao;
 import com.imooc.food.orderservicemanager.dto.OrderMessageDTO;
 import com.imooc.food.orderservicemanager.enummeration.OrderStatus;
 import com.imooc.food.orderservicemanager.po.OrderDetailPO;
-import com.rabbitmq.client.BuiltinExchangeType;
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.ConnectionFactory;
-import com.rabbitmq.client.DeliverCallback;
+import com.rabbitmq.client.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -89,7 +85,7 @@ public class OrderMessageService {
             /*---------------------settlement---------------------*/
 
             channel.exchangeDeclare(
-                    "exchange.settlement.order",
+                    "exchange.order.settlement",
                     BuiltinExchangeType.FANOUT,
                     true,
                     false,
@@ -162,7 +158,9 @@ public class OrderMessageService {
                         try (Connection connection = connectionFactory.newConnection();
                              Channel channel = connection.createChannel()) {
                             String messageToSend = objectMapper.writeValueAsString(orderMessageDTO);
-                            channel.basicPublish("exchange.order.settlement", "key.settlement", null,
+                            channel.basicPublish("exchange.order.settlement",
+                                    "key.settlement",
+                                    null,
                                     messageToSend.getBytes());
                         }
                     } else {
