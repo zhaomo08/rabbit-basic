@@ -1,12 +1,15 @@
 package com.imooc.food.orderservicemanager.config;
 
 import com.imooc.food.orderservicemanager.service.OrderMessageService;
+import com.rabbitmq.client.Channel;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
+import org.springframework.amqp.rabbit.listener.api.ChannelAwareMessageListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -126,7 +129,7 @@ public class RabbitConfig {
         RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
         rabbitTemplate.setMandatory(true);
         rabbitTemplate.setConfirmCallback((correlationData, ack, cause) ->
-                log.info("correlationData:{}, ack:{}, cause{}",
+                log.info("correlationData:{}, ack:{}, cause: {}",
                         correlationData,
                         ack,
                         cause));
@@ -140,6 +143,32 @@ public class RabbitConfig {
                         routingKey));
         return rabbitTemplate;
     }
+
+    @Bean
+    public SimpleMessageListenerContainer messageListenerContainer(ConnectionFactory connectionFactory) {
+        SimpleMessageListenerContainer messageListenerContainer = new SimpleMessageListenerContainer(connectionFactory);
+        messageListenerContainer.setQueueNames("queue.order");
+        messageListenerContainer.setConcurrentConsumers(1);
+        messageListenerContainer.setMaxConcurrentConsumers(3);
+//        messageListenerContainer.setAcknowledgeMode(AcknowledgeMode.AUTO);
+//        messageListenerContainer.setMessageListener(new MessageListener() {
+//            @Override
+//            public void onMessage(Message message) {
+//                log.info("message:{}", message);
+//            }
+//        });
+        messageListenerContainer.setPrefetchCount(2);
+        messageListenerContainer.setAcknowledgeMode(AcknowledgeMode.MANUAL);
+        messageListenerContainer.setMessageListener(new ChannelAwareMessageListener() {
+            @Override
+            public void onMessage(Message message, Channel channel) throws Exception {
+                log.info("message:{}", message);
+                channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+            }
+        });
+        return messageListenerContainer;
+    }
+
 
 
 }

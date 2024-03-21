@@ -46,8 +46,8 @@ public class OrderMessageService {
         connectionFactory.setHost("localhost");
         try (Connection connection = connectionFactory.newConnection();
              Channel channel = connection.createChannel()) {
-            channel.basicConsume("queue.order", true, deliverCallback, consumerTag -> {
-            });
+//            channel.basicConsume("queue.order", true, deliverCallback, consumerTag -> {
+//            });
             while (true) {
                 Thread.sleep(100000);
             }
