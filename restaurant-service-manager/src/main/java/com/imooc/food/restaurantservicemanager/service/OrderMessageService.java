@@ -76,7 +76,7 @@ public class OrderMessageService {
 //                channel.basicAck(message.getEnvelope().getDeliveryTag(), true);
 //            }
             Thread.sleep(3000);
-            channel.basicAck(message.getEnvelope().getDeliveryTag(), false);
+            channel.basicNack(message.getEnvelope().getDeliveryTag(), false, false);
 
 //            channel.basicAck(message.getEnvelope().getDeliveryTag(), true);  //  没有手动 ack  在管控台  queue Unacked 在微服务关闭后 改为 ready 状态
 
@@ -98,6 +98,28 @@ public class OrderMessageService {
     @Async
     public void handleMessage() throws IOException, TimeoutException, InterruptedException {
         log.info("start linstening message");
+        // DLX
+        channel.exchangeDeclare(
+                "exchange.dlx",
+                BuiltinExchangeType.TOPIC,
+                true,
+                false,
+                null
+        );
+
+        channel.queueDeclare(
+                "queue.dlx",
+                true,
+                false,
+                false,
+                null
+        );
+
+        channel.queueBind(
+                "queue.dlx",
+                "exchange.dlx",
+                "#"
+        );
 
 
         channel.exchangeDeclare(
@@ -109,7 +131,9 @@ public class OrderMessageService {
 
         //设置队列TTL
         Map<String, Object> args = new HashMap<String, Object>();
-        args.put("x-message-ttl", 10000);
+        args.put("x-message-ttl", 150000);
+        args.put("x-max-length", 5);
+        args.put("x-dead-letter-exchange", "exchange.dlx");
 
         channel.queueDeclare(
                 "queue.restaurant",
