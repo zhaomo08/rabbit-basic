@@ -9,6 +9,7 @@ import com.imooc.food.orderservicemanager.vo.OrderCreateVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
+import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -55,12 +56,12 @@ public class OrderService {
         MessageProperties messageProperties = new MessageProperties();
         messageProperties.setExpiration("15000");
         Message message = new Message(messageToSend.getBytes(), messageProperties);
-//        CorrelationData correlationData = new CorrelationData();
-//        correlationData.setId(orderPO.getId().toString());
+        CorrelationData correlationData = new CorrelationData();
+        correlationData.setId(orderPO.getId().toString());
         rabbitTemplate.send(
                 "exchange.order.restaurant",
                 "key.restaurant",
-                message
+                message, correlationData
         );
 //      convertAndSend 这个发送消息的方法不好设置   messageProperties
 //        rabbitTemplate.convertAndSend(

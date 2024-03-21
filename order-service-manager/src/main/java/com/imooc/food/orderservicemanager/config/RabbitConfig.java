@@ -108,8 +108,8 @@ public class RabbitConfig {
         connectionFactory.setPassword("guest");
         connectionFactory.setUsername("guest");
         // 发送者确认和消息返回
-//        connectionFactory.setPublisherConfirmType(CachingConnectionFactory.ConfirmType.SIMPLE);
-//        connectionFactory.setPublisherReturns(true);
+        connectionFactory.setPublisherConfirmType(CachingConnectionFactory.ConfirmType.SIMPLE);
+        connectionFactory.setPublisherReturns(true);
         connectionFactory.createConnection();  //  无意义代码 看源码 做连接操作 回调  initialize addListener
         return connectionFactory;
     }
@@ -124,20 +124,20 @@ public class RabbitConfig {
     @Bean
     RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
         RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
-//        rabbitTemplate.setMandatory(true);
-//        rabbitTemplate.setConfirmCallback((correlationData, ack, cause) ->
-//                log.info("correlationData:{}, ack:{}, cause{}",
-//                        correlationData,
-//                        ack,
-//                        cause));
-//        rabbitTemplate.setReturnCallback((message, replyCode, replyText, exchange, routingKey) ->
-//                log.info(
-//                        "message:{}, replyCode:{}, replyText:{}, exchange:{}, routingKey{}",
-//                        message,
-//                        replyCode,
-//                        replyText,
-//                        exchange,
-//                        routingKey));
+        rabbitTemplate.setMandatory(true);
+        rabbitTemplate.setConfirmCallback((correlationData, ack, cause) ->
+                log.info("correlationData:{}, ack:{}, cause{}",
+                        correlationData,
+                        ack,
+                        cause));
+        rabbitTemplate.setReturnCallback((message, replyCode, replyText, exchange, routingKey) ->
+                log.info(
+                        "message:{}, replyCode:{}, replyText:{}, exchange:{}, routingKey{}",
+                        message,
+                        replyCode,
+                        replyText,
+                        exchange,
+                        routingKey));
         return rabbitTemplate;
     }
 
