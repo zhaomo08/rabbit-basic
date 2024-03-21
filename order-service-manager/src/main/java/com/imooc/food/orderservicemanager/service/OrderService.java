@@ -71,12 +71,15 @@ public class OrderService {
 
                 }
             });
-//            channel.basicPublish("exchange.order.restaurant", "key.restaurant", null, messageToSend.getBytes());
 
-            for (int i = 0; i < 50; i++) {
-                channel.basicPublish("exchange.order.restaurant", "key.restaurant", null, messageToSend.getBytes());
-                log.info("message sent  successfully");
-            }
+            //设置单条消息TTL
+//            AMQP.BasicProperties properties = new AMQP.BasicProperties.Builder().expiration("15000").build();
+            channel.basicPublish("exchange.order.restaurant", "key.restaurant", null, messageToSend.getBytes());
+
+//            for (int i = 0; i < 50; i++) {
+//                channel.basicPublish("exchange.order.restaurant", "key.restaurant", null, messageToSend.getBytes());
+//                log.info("message sent  successfully");
+//            }
             log.info("message sent successfully");
 //            if (channel.waitForConfirms()) {
 //                log.info("RabbitMQ confirm successfully");
