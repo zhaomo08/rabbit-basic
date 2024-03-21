@@ -40,6 +40,8 @@ public class OrderMessageService {
 
     @Async
     public void handleMessage() throws IOException, TimeoutException, InterruptedException {
+        //  队列初次修改启动问题修复
+        Thread.sleep(5000);
         log.info("start linstening message");
         ConnectionFactory connectionFactory = new ConnectionFactory();
         connectionFactory.setHost("localhost");

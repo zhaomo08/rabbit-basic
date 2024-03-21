@@ -4,8 +4,10 @@ import com.imooc.food.orderservicemanager.service.OrderMessageService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.io.IOException;
@@ -23,67 +25,96 @@ public class RabbitConfig {
         orderMessageService.handleMessage();
     }
 
-    @Autowired
-    public void initRabbit() {
-        CachingConnectionFactory connectionFactory = new CachingConnectionFactory();
-        connectionFactory.setHost("127.0.0.1");
-        connectionFactory.setPort(5672);
-        connectionFactory.setPassword("guest");
-        connectionFactory.setUsername("guest");
+    /*---------------------restaurant---------------------*/
+    @Bean
+    public Exchange exchange1() {
+        return new DirectExchange("exchange.order.restaurant");
+    }
 
-        RabbitAdmin rabbitAdmin = new RabbitAdmin(connectionFactory);
+    @Bean
+    public Queue queue1() {
+        return new Queue("queue.order");
+    }
 
-        /*---------------------restaurant---------------------*/
-        Exchange exchange = new DirectExchange("exchange.order.restaurant");
-        rabbitAdmin.declareExchange(exchange);
-
-        Queue queue = new Queue("queue.order");
-        rabbitAdmin.declareQueue(queue);
-
-        Binding binding = new Binding(
+    @Bean
+    public Binding binding1() {
+        return new Binding(
                 "queue.order",
                 Binding.DestinationType.QUEUE,
                 "exchange.order.restaurant",
                 "key.order",
                 null);
+    }
 
-        rabbitAdmin.declareBinding(binding);
+    /*---------------------deliveryman---------------------*/
+    @Bean
+    public Exchange exchange2() {
+        return new DirectExchange("exchange.order.deliveryman");
+    }
 
-        /*---------------------deliveryman---------------------*/
-        exchange = new DirectExchange("exchange.order.deliveryman");
-        rabbitAdmin.declareExchange(exchange);
-        binding = new Binding(
+    @Bean
+    public Binding binding2() {
+        return new Binding(
                 "queue.order",
                 Binding.DestinationType.QUEUE,
                 "exchange.order.deliveryman",
                 "key.order",
                 null);
-        rabbitAdmin.declareBinding(binding);
+    }
 
+    /*---------settlement---------*/
+    @Bean
+    public Exchange exchange3() {
+        return new FanoutExchange("exchange.order.settlement");
+    }
 
-        /*---------settlement---------*/
-        exchange = new FanoutExchange("exchange.order.settlement");
-        rabbitAdmin.declareExchange(exchange);
-        exchange = new FanoutExchange("exchange.settlement.order");
-        rabbitAdmin.declareExchange(exchange);
-        binding = new Binding(
+    @Bean
+    public Exchange exchange4() {
+        return new FanoutExchange("exchange.settlement.order");
+    }
+
+    @Bean
+    public Binding binding3() {
+        return new Binding(
                 "queue.order",
                 Binding.DestinationType.QUEUE,
                 "exchange.settlement.order",
                 "key.order",
                 null);
-        rabbitAdmin.declareBinding(binding);
+    }
 
+    /*--------------reward----------------*/
+    @Bean
+    public Exchange exchange5() {
+        return new TopicExchange("exchange.order.reward");
+    }
 
-        /*--------------reward----------------*/
-        exchange = new TopicExchange("exchange.order.reward");
-        rabbitAdmin.declareExchange(exchange);
-        binding = new Binding(
+    @Bean
+    public Binding binding4() {
+        return new Binding(
                 "queue.order",
                 Binding.DestinationType.QUEUE,
                 "exchange.order.reward",
                 "key.order",
                 null);
-        rabbitAdmin.declareBinding(binding);
     }
+
+    @Bean
+    public ConnectionFactory connectionFactory() {
+        CachingConnectionFactory connectionFactory = new CachingConnectionFactory();
+        connectionFactory.setHost("127.0.0.1");
+        connectionFactory.setPort(5672);
+        connectionFactory.setPassword("guest");
+        connectionFactory.setUsername("guest");
+        connectionFactory.createConnection();  //  无意义代码 看源码 做连接操作 回调  initialize addListener
+        return connectionFactory;
+    }
+
+    @Bean
+    public RabbitAdmin rabbitAdmin(ConnectionFactory connectionFactory) {
+        RabbitAdmin rabbitAdmin = new RabbitAdmin(connectionFactory);
+        rabbitAdmin.setAutoStartup(true);
+        return rabbitAdmin;
+    }
+
 }
