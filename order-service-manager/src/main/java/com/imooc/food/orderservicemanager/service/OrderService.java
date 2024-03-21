@@ -6,14 +6,11 @@ import com.imooc.food.orderservicemanager.dto.OrderMessageDTO;
 import com.imooc.food.orderservicemanager.enummeration.OrderStatus;
 import com.imooc.food.orderservicemanager.po.OrderDetailPO;
 import com.imooc.food.orderservicemanager.vo.OrderCreateVO;
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.ConfirmListener;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.ConnectionFactory;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -29,12 +26,12 @@ public class OrderService {
     @Autowired
     RabbitTemplate rabbitTemplate;
 
-    @Value("${rabbitmq.exchange}")
-    public String exchangeName;
-    @Value("${rabbitmq.restaurant-routing-key}")
-    public String restaurantRoutingKey;
-    @Value("${rabbitmq.deliveryman-routing-key}")
-    public String deliverymanRoutingKey;
+//    @Value("${rabbitmq.exchange}")
+//    public String exchangeName;
+//    @Value("${rabbitmq.restaurant-routing-key}")
+//    public String restaurantRoutingKey;
+//    @Value("${rabbitmq.deliveryman-routing-key}")
+//    public String deliverymanRoutingKey;
 
     ObjectMapper objectMapper = new ObjectMapper();
 
@@ -54,41 +51,32 @@ public class OrderService {
         orderMessageDTO.setProductId(orderPO.getProductId());
         orderMessageDTO.setAccountId(orderCreateVO.getAccountId());
 
-        ConnectionFactory connectionFactory = new ConnectionFactory();
-        connectionFactory.setHost("localhost");
+        String messageToSend = objectMapper.writeValueAsString(orderMessageDTO);
+        MessageProperties messageProperties = new MessageProperties();
+        messageProperties.setExpiration("15000");
+        Message message = new Message(messageToSend.getBytes(), messageProperties);
+//        CorrelationData correlationData = new CorrelationData();
+//        correlationData.setId(orderPO.getId().toString());
+        rabbitTemplate.send(
+                "exchange.order.restaurant",
+                "key.restaurant",
+                message
+        );
+//      convertAndSend 这个发送消息的方法不好设置   messageProperties
+//        rabbitTemplate.convertAndSend(
+//                "exchange.order.restaurant",
+//                "key.restaurant",
+//                messageToSend);
+//
+//        rabbitTemplate.execute(channel -> {
+//            channel.abort();
+//            return null;
+//        });
 
-        try (Connection connection = connectionFactory.newConnection();
-             Channel channel = connection.createChannel()) {
-            String messageToSend = objectMapper.writeValueAsString(orderMessageDTO);
-            channel.confirmSelect();
-            channel.addConfirmListener(new ConfirmListener() {
-                public void handleAck(long deliveryTag, boolean multiple) throws IOException {
-                    log.info("Ack, deliveryTag: {}, multiple: {}", deliveryTag, multiple);
-                }
+        log.info("message sent");
 
-                public void handleNack(long deliveryTag, boolean multiple) throws IOException {
-                    log.info("Nack, deliveryTag: {}, multiple: {}", deliveryTag, multiple);
-
-                }
-            });
-
-            //设置单条消息TTL
-//            AMQP.BasicProperties properties = new AMQP.BasicProperties.Builder().expiration("15000").build();
-            channel.basicPublish("exchange.order.restaurant", "key.restaurant", null, messageToSend.getBytes());
-
-//            for (int i = 0; i < 50; i++) {
-//                channel.basicPublish("exchange.order.restaurant", "key.restaurant", null, messageToSend.getBytes());
-//                log.info("message sent  successfully");
-//            }
-            log.info("message sent successfully");
-//            if (channel.waitForConfirms()) {
-//                log.info("RabbitMQ confirm successfully");
-//            } else {
-//                log.info("RabbitMQ confirm fail");
-//            }
-            Thread.sleep(1000);
+        Thread.sleep(1000);
 
         }
-    }
 
 }

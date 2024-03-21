@@ -6,6 +6,7 @@ import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -106,6 +107,9 @@ public class RabbitConfig {
         connectionFactory.setPort(5672);
         connectionFactory.setPassword("guest");
         connectionFactory.setUsername("guest");
+        // 发送者确认和消息返回
+//        connectionFactory.setPublisherConfirmType(CachingConnectionFactory.ConfirmType.SIMPLE);
+//        connectionFactory.setPublisherReturns(true);
         connectionFactory.createConnection();  //  无意义代码 看源码 做连接操作 回调  initialize addListener
         return connectionFactory;
     }
@@ -116,5 +120,26 @@ public class RabbitConfig {
         rabbitAdmin.setAutoStartup(true);
         return rabbitAdmin;
     }
+
+    @Bean
+    RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
+        RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
+//        rabbitTemplate.setMandatory(true);
+//        rabbitTemplate.setConfirmCallback((correlationData, ack, cause) ->
+//                log.info("correlationData:{}, ack:{}, cause{}",
+//                        correlationData,
+//                        ack,
+//                        cause));
+//        rabbitTemplate.setReturnCallback((message, replyCode, replyText, exchange, routingKey) ->
+//                log.info(
+//                        "message:{}, replyCode:{}, replyText:{}, exchange:{}, routingKey{}",
+//                        message,
+//                        replyCode,
+//                        replyText,
+//                        exchange,
+//                        routingKey));
+        return rabbitTemplate;
+    }
+
 
 }
