@@ -6,7 +6,10 @@ import com.imooc.food.orderservicemanager.dao.OrderDetailDao;
 import com.imooc.food.orderservicemanager.dto.OrderMessageDTO;
 import com.imooc.food.orderservicemanager.enummeration.OrderStatus;
 import com.imooc.food.orderservicemanager.po.OrderDetailPO;
-import com.rabbitmq.client.*;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.DeliverCallback;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -39,77 +42,9 @@ public class OrderMessageService {
     public void handleMessage() throws IOException, TimeoutException, InterruptedException {
         log.info("start linstening message");
         ConnectionFactory connectionFactory = new ConnectionFactory();
-//        connectionFactory.setHost("localhost");
         connectionFactory.setHost("localhost");
         try (Connection connection = connectionFactory.newConnection();
              Channel channel = connection.createChannel()) {
-
-            /*--------------------- exchange  ----restaurant---------------------*/
-            channel.exchangeDeclare(
-                    "exchange.order.restaurant",
-                    BuiltinExchangeType.DIRECT,
-                    true,
-                    false,
-                    null);
-
-            /*--------------------- queue   ----order ---------------------*/
-            channel.queueDeclare(
-                    "queue.order",
-                    true,
-                    false,
-                    false,
-                    null);
-
-
-            channel.queueBind(
-                    "queue.order",
-                    "exchange.order.restaurant",
-                    "key.order");
-
-
-            /*---------------------deliveryman---------------------*/
-            channel.exchangeDeclare(
-                    "exchange.order.deliveryman",
-                    BuiltinExchangeType.DIRECT,
-                    true,
-                    false,
-                    null);
-
-
-            // 为什么没有 再定义一个 queue  一个queue 可以接收 多个exchange 的消息  一个队列  两个交换机
-            channel.queueBind(
-                    "queue.order",
-                    "exchange.order.deliveryman",
-                    "key.order");
-
-            /*---------------------settlement---------------------*/
-
-            channel.exchangeDeclare(
-                    "exchange.order.settlement",
-                    BuiltinExchangeType.FANOUT,
-                    true,
-                    false,
-                    null);
-
-            channel.queueBind(
-                    "queue.order",
-                    "exchange.settlement.order",
-                    "key.order");
-
-            /*---------------------reward---------------------*/
-
-            channel.exchangeDeclare(
-                    "exchange.order.reward",
-                    BuiltinExchangeType.TOPIC,
-                    true,
-                    false,
-                    null);
-
-            channel.queueBind(
-                    "queue.order",
-                    "exchange.order.reward",
-                    "key.order");
-
             channel.basicConsume("queue.order", true, deliverCallback, consumerTag -> {
             });
             while (true) {
