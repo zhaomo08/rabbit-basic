@@ -1,5 +1,6 @@
 package com.imooc.food.orderservicemanager.config;
 
+import com.imooc.food.orderservicemanager.dto.OrderMessageDTO;
 import com.imooc.food.orderservicemanager.service.OrderMessageService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.*;
@@ -9,12 +10,11 @@ import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import org.springframework.amqp.rabbit.listener.adapter.MessageListenerAdapter;
+import org.springframework.amqp.support.converter.ClassMapper;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import java.util.HashMap;
-import java.util.Map;
 
 
 @Slf4j
@@ -159,17 +159,33 @@ public class RabbitConfig {
 //            @Override
 //            public void onMessage(Message message, Channel channel) throws Exception {
 //                log.info("message:{}", message);
-//                orderMessageService.handleOrderMessage(message.getBody());
+//                ObjectMapper objectMapper = new ObjectMapper();
+//                OrderMessageDTO orderMessageDTO = objectMapper.readValue(message.getBody(), OrderMessageDTO.class);
+//                orderMessageService.handleMessage(orderMessageDTO);
 //                channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
 //            }
 //        });
-        MessageListenerAdapter listenerAdapter = new MessageListenerAdapter();
-        listenerAdapter.setDelegate(orderMessageService);
 
-        Map<String, String> methodMap = new HashMap<>(8);
-        methodMap.put("queue.order", "handleMessage1");  // handleMessage1 为 orderMessageService 的 方法名
-        listenerAdapter.setQueueOrTagToMethodName(methodMap);
-        messageListenerContainer.setMessageListener(listenerAdapter);
+
+        MessageListenerAdapter messageListenerAdapter = new MessageListenerAdapter(orderMessageService);
+        Jackson2JsonMessageConverter messageConverter = new Jackson2JsonMessageConverter();
+        messageConverter.setClassMapper(new ClassMapper() {
+            @Override
+            public void fromClass(Class<?> clazz, MessageProperties properties) {
+
+            }
+
+            @Override
+            public Class<?> toClass(MessageProperties properties) {
+                return OrderMessageDTO.class;
+            }
+        });
+
+//        Jackson2JavaTypeMapper jackson2JavaTypeMapper = new DefaultJackson2JavaTypeMapper();
+//        messageConverter.setJavaTypeMapper(jackson2JavaTypeMapper);
+
+        messageListenerAdapter.setMessageConverter(messageConverter);
+        messageListenerContainer.setMessageListener(messageListenerAdapter);
         return messageListenerContainer;
     }
 

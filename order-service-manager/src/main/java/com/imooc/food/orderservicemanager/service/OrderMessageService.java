@@ -34,14 +34,14 @@ public class OrderMessageService {
     ObjectMapper objectMapper = new ObjectMapper();
 
 
-    public void handleMessage1(byte[] messageBody) throws Exception {
-        log.info("handleOrderMessage:messageBody:{}", new String(messageBody));
+    public void handleMessage(OrderMessageDTO orderMessageDTO) throws Exception {
+        log.info("handleOrderMessage:messageBody:{}", orderMessageDTO);
         ConnectionFactory connectionFactory = new ConnectionFactory();
         connectionFactory.setHost("localhost");
         try {
             // 将消息体反序列化为 DTO
-            OrderMessageDTO orderMessageDTO = objectMapper.readValue(messageBody,
-                    OrderMessageDTO.class);
+//            OrderMessageDTO orderMessageDTO = objectMapper.readValue(messageBody,
+//                    OrderMessageDTO.class);
 
             // 数据库中读取订单 PO
             OrderDetailPO orderPO = orderDetailDao.selectOrder(orderMessageDTO.getOrderId());
@@ -113,6 +113,4 @@ public class OrderMessageService {
             e.printStackTrace();
         }
     }
-
-    ;
 }
