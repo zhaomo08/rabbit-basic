@@ -45,7 +45,7 @@ public class OrderMessageService {
     @RabbitListener(
             containerFactory = "rabbitListenerContainerFactory",
 //            queues = "queue.order",
-            admin = "rabbitAdmin",
+//            admin = "rabbitAdmin",
             bindings = {
                     @QueueBinding(
                             value = @Queue(name = "queue.order",
