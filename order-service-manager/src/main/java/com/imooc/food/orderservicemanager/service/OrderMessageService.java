@@ -9,13 +9,10 @@ import com.imooc.food.orderservicemanager.po.OrderDetailPO;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
-import com.rabbitmq.client.DeliverCallback;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.util.concurrent.TimeoutException;
 
 @Slf4j
@@ -37,27 +34,8 @@ public class OrderMessageService {
     ObjectMapper objectMapper = new ObjectMapper();
 
 
-    @Async
-    public void handleMessage() throws IOException, TimeoutException, InterruptedException {
-        //  队列初次修改启动问题修复
-        Thread.sleep(5000);
-        log.info("start linstening message");
-        ConnectionFactory connectionFactory = new ConnectionFactory();
-        connectionFactory.setHost("localhost");
-        try (Connection connection = connectionFactory.newConnection();
-             Channel channel = connection.createChannel()) {
-//            channel.basicConsume("queue.order", true, deliverCallback, consumerTag -> {
-//            });
-            while (true) {
-                Thread.sleep(100000);
-            }
-        }
-    }
-
-
-    DeliverCallback deliverCallback = (consumerTag, message) -> {
-        String messageBody = new String(message.getBody());
-        log.info("deliverCallback:messageBody:{}", messageBody);
+    public void handleMessage1(byte[] messageBody) throws Exception {
+        log.info("handleOrderMessage:messageBody:{}", new String(messageBody));
         ConnectionFactory connectionFactory = new ConnectionFactory();
         connectionFactory.setHost("localhost");
         try {
@@ -134,5 +112,7 @@ public class OrderMessageService {
         } catch (JsonProcessingException | TimeoutException e) {
             e.printStackTrace();
         }
-    };
+    }
+
+    ;
 }

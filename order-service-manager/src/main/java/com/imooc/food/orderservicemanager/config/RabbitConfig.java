@@ -1,7 +1,6 @@
 package com.imooc.food.orderservicemanager.config;
 
 import com.imooc.food.orderservicemanager.service.OrderMessageService;
-import com.rabbitmq.client.Channel;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
@@ -9,13 +8,14 @@ import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
-import org.springframework.amqp.rabbit.listener.api.ChannelAwareMessageListener;
+import org.springframework.amqp.rabbit.listener.adapter.MessageListenerAdapter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.io.IOException;
-import java.util.concurrent.TimeoutException;
+import java.util.HashMap;
+import java.util.Map;
+
 
 @Slf4j
 @Configuration
@@ -24,10 +24,6 @@ public class RabbitConfig {
     @Autowired
     OrderMessageService orderMessageService;
 
-    @Autowired
-    public void startListenMessage() throws IOException, TimeoutException, InterruptedException {
-        orderMessageService.handleMessage();
-    }
 
     /*---------------------restaurant---------------------*/
     @Bean
@@ -159,13 +155,21 @@ public class RabbitConfig {
 //        });
         messageListenerContainer.setPrefetchCount(2);
         messageListenerContainer.setAcknowledgeMode(AcknowledgeMode.MANUAL);
-        messageListenerContainer.setMessageListener(new ChannelAwareMessageListener() {
-            @Override
-            public void onMessage(Message message, Channel channel) throws Exception {
-                log.info("message:{}", message);
-                channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
-            }
-        });
+//        messageListenerContainer.setMessageListener(new ChannelAwareMessageListener() {
+//            @Override
+//            public void onMessage(Message message, Channel channel) throws Exception {
+//                log.info("message:{}", message);
+//                orderMessageService.handleOrderMessage(message.getBody());
+//                channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+//            }
+//        });
+        MessageListenerAdapter listenerAdapter = new MessageListenerAdapter();
+        listenerAdapter.setDelegate(orderMessageService);
+
+        Map<String, String> methodMap = new HashMap<>(8);
+        methodMap.put("queue.order", "handleMessage1");  // handleMessage1 为 orderMessageService 的 方法名
+        listenerAdapter.setQueueOrTagToMethodName(methodMap);
+        messageListenerContainer.setMessageListener(listenerAdapter);
         return messageListenerContainer;
     }
 
