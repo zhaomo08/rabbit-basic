@@ -1,17 +1,14 @@
 package com.imooc.food.orderservicemanager.config;
 
-import com.imooc.food.orderservicemanager.dto.OrderMessageDTO;
 import com.imooc.food.orderservicemanager.service.OrderMessageService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.*;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
-import org.springframework.amqp.rabbit.listener.adapter.MessageListenerAdapter;
-import org.springframework.amqp.support.converter.ClassMapper;
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.rabbit.listener.RabbitListenerContainerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -141,53 +138,60 @@ public class RabbitConfig {
     }
 
     @Bean
-    public SimpleMessageListenerContainer messageListenerContainer(ConnectionFactory connectionFactory) {
-        SimpleMessageListenerContainer messageListenerContainer = new SimpleMessageListenerContainer(connectionFactory);
-        messageListenerContainer.setQueueNames("queue.order");
-        messageListenerContainer.setConcurrentConsumers(1);
-        messageListenerContainer.setMaxConcurrentConsumers(3);
-//        messageListenerContainer.setAcknowledgeMode(AcknowledgeMode.AUTO);
-//        messageListenerContainer.setMessageListener(new MessageListener() {
-//            @Override
-//            public void onMessage(Message message) {
-//                log.info("message:{}", message);
-//            }
-//        });
-        messageListenerContainer.setPrefetchCount(2);
-        messageListenerContainer.setAcknowledgeMode(AcknowledgeMode.MANUAL);
-//        messageListenerContainer.setMessageListener(new ChannelAwareMessageListener() {
-//            @Override
-//            public void onMessage(Message message, Channel channel) throws Exception {
-//                log.info("message:{}", message);
-//                ObjectMapper objectMapper = new ObjectMapper();
-//                OrderMessageDTO orderMessageDTO = objectMapper.readValue(message.getBody(), OrderMessageDTO.class);
-//                orderMessageService.handleMessage(orderMessageDTO);
-//                channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
-//            }
-//        });
-
-
-        MessageListenerAdapter messageListenerAdapter = new MessageListenerAdapter(orderMessageService);
-        Jackson2JsonMessageConverter messageConverter = new Jackson2JsonMessageConverter();
-        messageConverter.setClassMapper(new ClassMapper() {
-            @Override
-            public void fromClass(Class<?> clazz, MessageProperties properties) {
-
-            }
-
-            @Override
-            public Class<?> toClass(MessageProperties properties) {
-                return OrderMessageDTO.class;
-            }
-        });
-
-//        Jackson2JavaTypeMapper jackson2JavaTypeMapper = new DefaultJackson2JavaTypeMapper();
-//        messageConverter.setJavaTypeMapper(jackson2JavaTypeMapper);
-
-        messageListenerAdapter.setMessageConverter(messageConverter);
-        messageListenerContainer.setMessageListener(messageListenerAdapter);
-        return messageListenerContainer;
+    public RabbitListenerContainerFactory rabbitListenerContainerFactory(ConnectionFactory connectionFactory) {
+        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+        factory.setConnectionFactory(connectionFactory);
+        return factory;
     }
+
+//    @Bean
+//    public SimpleMessageListenerContainer messageListenerContainer(ConnectionFactory connectionFactory) {
+//        SimpleMessageListenerContainer messageListenerContainer = new SimpleMessageListenerContainer(connectionFactory);
+//        messageListenerContainer.setQueueNames("queue.order");
+//        messageListenerContainer.setConcurrentConsumers(1);
+//        messageListenerContainer.setMaxConcurrentConsumers(3);
+////        messageListenerContainer.setAcknowledgeMode(AcknowledgeMode.AUTO);
+////        messageListenerContainer.setMessageListener(new MessageListener() {
+////            @Override
+////            public void onMessage(Message message) {
+////                log.info("message:{}", message);
+////            }
+////        });
+//        messageListenerContainer.setPrefetchCount(2);
+//        messageListenerContainer.setAcknowledgeMode(AcknowledgeMode.MANUAL);
+////        messageListenerContainer.setMessageListener(new ChannelAwareMessageListener() {
+////            @Override
+////            public void onMessage(Message message, Channel channel) throws Exception {
+////                log.info("message:{}", message);
+////                ObjectMapper objectMapper = new ObjectMapper();
+////                OrderMessageDTO orderMessageDTO = objectMapper.readValue(message.getBody(), OrderMessageDTO.class);
+////                orderMessageService.handleMessage(orderMessageDTO);
+////                channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+////            }
+////        });
+//
+//
+//        MessageListenerAdapter messageListenerAdapter = new MessageListenerAdapter(orderMessageService);
+//        Jackson2JsonMessageConverter messageConverter = new Jackson2JsonMessageConverter();
+//        messageConverter.setClassMapper(new ClassMapper() {
+//            @Override
+//            public void fromClass(Class<?> clazz, MessageProperties properties) {
+//
+//            }
+//
+//            @Override
+//            public Class<?> toClass(MessageProperties properties) {
+//                return OrderMessageDTO.class;
+//            }
+//        });
+//
+////        Jackson2JavaTypeMapper jackson2JavaTypeMapper = new DefaultJackson2JavaTypeMapper();
+////        messageConverter.setJavaTypeMapper(jackson2JavaTypeMapper);
+//
+//        messageListenerAdapter.setMessageConverter(messageConverter);
+//        messageListenerContainer.setMessageListener(messageListenerAdapter);
+//        return messageListenerContainer;
+//    }
 
 
 

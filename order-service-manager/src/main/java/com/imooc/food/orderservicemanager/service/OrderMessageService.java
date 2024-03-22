@@ -10,7 +10,15 @@ import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.core.ExchangeTypes;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.rabbit.annotation.Exchange;
+import org.springframework.amqp.rabbit.annotation.Queue;
+import org.springframework.amqp.rabbit.annotation.QueueBinding;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.TimeoutException;
@@ -19,14 +27,14 @@ import java.util.concurrent.TimeoutException;
 @Service
 public class OrderMessageService {
 
-//    @Value("${rabbitmq.exchange}")
-//    public String exchangeName;
-//    @Value("${rabbitmq.deliveryman-routing-key}")
-//    public String deliverymanRoutingKey;
-//    @Value("${rabbitmq.settlement-routing-key}")
-//    public String settlementRoutingKey;
-//    @Value("${rabbitmq.reward-routing-key}")
-//    public String rewardRoutingKey;
+    @Value("${rabbitmq.exchange}")
+    public String exchangeName;
+    @Value("${rabbitmq.deliveryman-routing-key}")
+    public String deliverymanRoutingKey;
+    @Value("${rabbitmq.settlement-routing-key}")
+    public String settlementRoutingKey;
+    @Value("${rabbitmq.reward-routing-key}")
+    public String rewardRoutingKey;
 
 
     @Autowired
@@ -34,14 +42,52 @@ public class OrderMessageService {
     ObjectMapper objectMapper = new ObjectMapper();
 
 
-    public void handleMessage(OrderMessageDTO orderMessageDTO) throws Exception {
-        log.info("handleOrderMessage:messageBody:{}", orderMessageDTO);
+    @RabbitListener(
+            containerFactory = "rabbitListenerContainerFactory",
+//            queues = "queue.order",
+            admin = "rabbitAdmin",
+            bindings = {
+                    @QueueBinding(
+                            value = @Queue(name = "queue.order",
+                                    arguments = {
+                                            //                                            @Argument(name =
+                                            //                                            "x-message-ttl", value =
+                                            //                                            "1000", type = "java.lang
+                                            //                                            .Integer"),
+                                            //                                            @Argument(name =
+                                            //                                            "x-dead-letter-exchange",
+                                            //                                            value = "aaaaa"),
+                                            //                                            @Argument(name =
+                                            //                                            "x-dead-letter-routing-key", value = "bbbb")
+                                    }),
+                            exchange = @Exchange(name = "exchange.order.restaurant"),
+                            key = "key.order"
+                    ),
+                    @QueueBinding(
+                            value = @Queue(name = "queue.order"),
+                            exchange = @Exchange(name = "exchange.order.deliveryman"),
+                            key = "key.order"
+                    ),
+                    @QueueBinding(
+                            value = @Queue(name = "queue.order"),
+                            exchange = @Exchange(name = "exchange.settlement.order", type = ExchangeTypes.FANOUT),
+                            key = "key.order"
+                    ),
+                    @QueueBinding(
+                            value = @Queue(name = "queue.order"),
+                            exchange = @Exchange(name = "exchange.order.reward", type = ExchangeTypes.TOPIC),
+                            key = "key.order"
+                    )
+            }
+    )
+    public void handleMessage(@Payload Message message) throws Exception {
+        log.info("handleOrderMessage:message:{}", new String(message.getBody()));
         ConnectionFactory connectionFactory = new ConnectionFactory();
         connectionFactory.setHost("localhost");
         try {
             // 将消息体反序列化为 DTO
-//            OrderMessageDTO orderMessageDTO = objectMapper.readValue(messageBody,
-//                    OrderMessageDTO.class);
+            OrderMessageDTO orderMessageDTO = objectMapper.readValue(message.getBody(),
+                    OrderMessageDTO.class);
 
             // 数据库中读取订单 PO
             OrderDetailPO orderPO = orderDetailDao.selectOrder(orderMessageDTO.getOrderId());
